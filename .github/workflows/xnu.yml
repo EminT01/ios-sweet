@@ -77,10 +77,11 @@ jobs:
           echo "MACHINE_CONFIG = TULIP" >> conf/tulip/Makefile.conf
           echo "KERNEL_CONFIGS = DEVELOPMENT" >> conf/tulip/Makefile.conf
           echo "HOST_OS_VERSION = 220000" >> conf/tulip/Makefile.conf
-          echo "RC_ProjectSourceVersion = 8792419" >> conf/tulip/Makefile.conf
-          echo "RC_ProjectSourceRelease = GM" >> conf/tulip/Makefile.conf
+          echo "RC_ProjectSourceVersion = 8792" >> conf/tulip/Makefile.conf
+          echo "RC_ProjectSourceRelease = 41" >> conf/tulip/Makefile.conf
+          echo "RC_ProjectName = xnu" >> conf/tulip/Makefile.conf
 
       - name: Start Kernel Compilation
         run: |
           cd xnu
-          make SDKROOT=iphoneos ARCH_CONFIG_EXPLICIT=ARM64 MACHINE_CONFIG=TULIP KERNEL_CONFIGS=DEVELOPMENT HOST_OS_VERSION=220000 RC_ProjectSourceVersion=8792419 RC_ProjectSourceRelease=GM SKIP_HOST_VERSION_CHECK=1
+          make SDKROOT=iphoneos ARCH_CONFIG_EXPLICIT=ARM64 MACHINE_CONFIG=TULIP KERNEL_CONFIGS=DEVELOPMENT HOST_OS_VERSION=220000 RC_ProjectSourceVersion=8792 RC_ProjectSourceRelease=41 RC_ProjectName=xnu SKIP_HOST_VERSION_CHECK=1
