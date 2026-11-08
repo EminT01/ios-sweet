@@ -25,20 +25,15 @@ jobs:
       - name: Apply Deep Architecture, Xcrun and Sysctl Patches
         run: |
           cd xnu
-          # Mimari ve LSE yamaları
           find makedefs/ -type f -exec sed -i 's/-march=armv8.[1-9]-a/-march=armv8-a/g' {} +
           find osfmk/ -name "*.h" -o -name "*.c" -o -name "*.s" -type f -exec sed -i 's/#if defined(__ARM_LSE__)/#if 0/g' {} +
           find osfmk/ -name "*.h" -o -name "*.c" -o -name "*.s" -type f -exec sed -i 's/#ifdef __ARM_LSE__/#if 0/g' {} +
 
-          # Mutlak yollu /usr/bin/xcrun çağrılarını true komutuyla değiştiriyoruz
           find . -type f \( -name "Makefile*" -o -name "*.cmd" -o -name "*.make" \) -exec sed -i 's|/usr/bin/xcrun|true|g' {} +
           find . -type f \( -name "Makefile*" -o -name "*.cmd" -o -name "*.make" \) -exec sed -i 's|\bcrun\b|true|g' {} +
 
-          # MakeInc.cmd içindeki sysctl bağımlılığını sabit değerlerle bypass ediyoruz
-          sed -i 's/sysctl -n hw\.memsize/echo 8589934592/g' makedefs/MakeInc.cmd
-          sed -i 's/sysctl -n hw\.logicalcpu/echo 4/g' makedefs/MakeInc.cmd
-          sed -i 's/sysctl -n hw\.physicalcpu/echo 2/g' makedefs/MakeInc.cmd
-          sed -i 's/\$(shell sysctl[^)]*)/8589934592/g' makedefs/MakeInc.cmd
+          # MakeInc.cmd içindeki 480. satırı doğrudan sabit bellek değerine çekiyoruz
+          sed -i '480s/.*/MEMSIZE := 8589934592/' makedefs/MakeInc.cmd
 
       - name: Create Custom Tulip Machine Config
         run: |
