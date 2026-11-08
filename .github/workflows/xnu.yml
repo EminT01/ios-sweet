@@ -1,4 +1,4 @@
-name: Build XNU Kernel for Tulip
+name: Build XNU Kernel for Tulip - Experimental
 
 on:
   workflow_dispatch:
@@ -29,11 +29,11 @@ jobs:
           find osfmk/ -name "*.h" -o -name "*.c" -o -name "*.s" -type f -exec sed -i 's/#if defined(__ARM_LSE__)/#if 0/g' {} +
           find osfmk/ -name "*.h" -o -name "*.c" -o -name "*.s" -type f -exec sed -i 's/#ifdef __ARM_LSE__/#if 0/g' {} +
 
-     - name: Start Kernel Compilation
+      - name: Start Kernel Compilation
         run: |
           cd xnu
           
-          # Sahte komutları doğrudan /usr/local/bin altına yazarak tüm sistemin görmesini sağlıyoruz
+          # Sahte araçları sistem yoluna yerleştiriyoruz
           sudo tee /usr/local/bin/xcrun > /dev/null << 'EOF'
           #!/bin/sh
           exit 0
