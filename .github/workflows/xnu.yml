@@ -36,6 +36,9 @@ jobs:
           # MakeInc.cmd içindeki sorunlu dinamik bloğu kapatıyoruz
           sed -i '465,495s/^/#/' makedefs/MakeInc.cmd
 
+          # MakeInc.top içindeki 375. satırdaki word fonksiyonunun patlamaması için satırı bypass ediyoruz
+          sed -i '375s/.*/# bypassed word check/' makedefs/MakeInc.top
+
       - name: Re-apply Mock System Binaries
         run: |
           sudo rm -f /usr/bin/sysctl /bin/sysctl /usr/sbin/sysctl /sbin/sysctl
