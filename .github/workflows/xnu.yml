@@ -32,4 +32,14 @@ jobs:
       - name: Start Kernel Compilation
         run: |
           cd xnu
-          make SDKROOT=iphoneos ARCH=arm64 KERNEL_CONFIGS="DEVELOPMENT"
+          # Linux ortamında eksik olan macOS komutları için geçici symlink ve değişkenler oluşturuyoruz
+          mkdir -p /tmp/bin
+          echo '#!/bin/sh' > /tmp/bin/xcrun
+          echo 'exit 0' >> /tmp/bin/xcrun
+          echo '#!/bin/sh' > /tmp/bin/sw_vers
+          echo 'echo "ProductVersion: 13.0"' >> /tmp/bin/sw_vers
+          chmod +x /tmp/bin/xcrun /tmp/bin/sw_vers
+          export PATH="/tmp/bin:$PATH"
+          
+          # Make komutunu Linux bellek parametreleriyle çalıştır
+          make SDKROOT=iphoneos ARCH=arm64 KERNEL_CONFIGS="DEVELOPMENT" RC_CFLAGS="-arch arm64"
