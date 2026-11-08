@@ -33,8 +33,10 @@ jobs:
           find . -type f \( -name "Makefile*" -o -name "*.cmd" -o -name "*.make" \) -exec sed -i 's|/usr/bin/xcrun|true|g' {} +
           find . -type f \( -name "Makefile*" -o -name "*.cmd" -o -name "*.make" \) -exec sed -i 's|\bcrun\b|true|g' {} +
 
-          # MakeInc.cmd içindeki sorunlu dinamik bellek ve wordlist bloğunu tamamen yorum satırına alıyoruz
+          # MakeInc.cmd içindeki sorunlu dinamik bloğu kapatıp eksik değişkenleri tamamlıyoruz
           sed -i '465,495s/^/#/' makedefs/MakeInc.cmd
+          echo "HOST_OS_VERSION := 22.0" >> makedefs/MakeInc.cmd
+          echo "MACHINE_cores := 4" >> makedefs/MakeInc.cmd
 
       - name: Re-apply Mock System Binaries
         run: |
