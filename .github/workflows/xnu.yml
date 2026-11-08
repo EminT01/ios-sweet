@@ -33,7 +33,7 @@ jobs:
         run: |
           cd xnu
           
-          # macOS'a özel komutları ve sysctl isteklerini Linux'ta taklit eden sahte araçlar yaratıyoruz
+          # macOS'a özel komutları ve sysctl isteklerini Linux'ta hatasız taklit eden araçlar
           mkdir -p /tmp/bin
           
           cat << 'EOF' > /tmp/bin/xcrun
@@ -45,19 +45,20 @@ jobs:
           EOF
 
           cat << 'EOF' > /tmp/bin/sysctl
-          if [ "$1" = "-n" ] && [ "$2" = "hw.memsize" ]; then
-              echo "8589934592" # 8 GB RAM simülasyonu
-          elif [ "$1" = "-n" ] && [ "$2" = "hw.logicalcpu" ]; then
+          # Make sisteminin beklediği saf sayısal değerleri doğrudan döndürüyoruz
+          if echo "$*" | grep -q "hw.memsize"; then
+              echo "8589934592"
+          elif echo "$*" | grep -q "hw.logicalcpu"; then
               echo "4"
-          elif [ "$1" = "-n" ] && [ "$2" = "hw.physicalcpu" ]; then
+          elif echo "$*" | grep -q "hw.physicalcpu"; then
               echo "2"
           else
-              echo "1"
+              echo "0"
           fi
           EOF
 
           chmod +x /tmp/bin/xcrun /tmp/bin/sw_vers /tmp/bin/sysctl
           export PATH="/tmp/bin:$PATH"
 
-          # Make sistemine sahte değerleri ve bellek parametrelerini zorla veriyoruz
-          make SDKROOT=iphoneos ARCH=arm64 KERNEL_CONFIGS="DEVELOPMENT" TARGET_CONFIGS="TULIP" RC_CFLAGS="-arch arm64"
+          # XNU make sistemine uygun doğru değişken adlarıyla derlemeyi tetikliyoruz
+          make SDKROOT=iphoneos ARCH=arm64 KERNEL_CONFIGS="DEVELOPMENT" MACHINE_CONFIGS="TULIP" RC_CFLAGS="-arch arm64"
