@@ -39,9 +39,10 @@ jobs:
           # MakeInc.top içindeki word fonksiyonunu bypass ediyoruz
           sed -i '375s/.*/# bypassed word check/' makedefs/MakeInc.top
 
-          # VMAPPLE varsayılanını TULIP ve ARM64 olarak Makefile seviyesinde kesin olarak zorluyoruz
+          # X86 ve VMAPPLE hedeflerini Makefile seviyesinde tamamen TULIP ve ARM64 olarak değiştiriyoruz
+          sed -i 's/x86_64/ARM64/g' Makefile || true
           sed -i 's/VMAPPLE/TULIP/g' Makefile || true
-          sed -i '1s/^/ARCH_CONFIG := ARM64\nMACHINE_CONFIG := TULIP\nPLATFORM := ARM64\n/' Makefile
+          sed -i '1s/^/ARCH_CONFIG := ARM64\nMACHINE_CONFIG := TULIP\nPLATFORM := ARM64\nTARGET_CONFIG_PLATFORM := TULIP\n/' Makefile
 
       - name: Re-apply Mock System Binaries
         run: |
