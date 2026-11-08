@@ -20,9 +20,10 @@ jobs:
       - name: Download Apple XNU Source
         run: |
           wget -O apple-xnu.tar.gz https://github.com/apple-oss-distributions/xnu/archive/refs/tags/xnu-8792.41.9.tar.gz
-          tar -xzf apple-xnu.tar.gz --strip-components=1 -C xnu
+          tar -xzf apple-xnu.tar.gz --strip-components=1 -C xnu,
 
-   - name: Apply Deep Architecture, Xcrun and Sysctl Patches
+          
+     - name: Apply Deep Architecture, Xcrun and Sysctl Patches
         run: |
           cd xnu
           find makedefs/ -type f -exec sed -i 's/-march=armv8.[1-9]-a/-march=armv8-a/g' {} +
@@ -32,8 +33,9 @@ jobs:
           find . -type f \( -name "Makefile*" -o -name "*.cmd" -o -name "*.make" \) -exec sed -i 's|/usr/bin/xcrun|true|g' {} +
           find . -type f \( -name "Makefile*" -o -name "*.cmd" -o -name "*.make" \) -exec sed -i 's|\bcrun\b|true|g' {} +
 
-          # 475. satırdaki bellek hesaplamasını sabit değere sabitliyoruz
+          # 475. satırdaki hatalı wordlist fonksiyonunu doğrudan sabit değerle değiştiriyoruz
           sed -i '475s/.*/MEMSIZE := 8589934592/' makedefs/MakeInc.cmd
+          sed -i '476s/.*/$(info Bypassed dynamic memory check)/' makedefs/MakeInc.cmd
 
       - name: Create Custom Tulip Machine Config
         run: |
