@@ -31,8 +31,8 @@ jobs:
 
       - name: Nuke and Replace System Binaries (Nuclear Option)
         run: |
-          # Ubuntu'nun kendi sysctl, xcrun ve sw_vers komutlarını kökten söküp sahteleriyle değiştiriyoruz
-          sudo rm -f /sbin/sysctl /usr/sbin/sysctl /bin/sysctl /usr/bin/sysctl
+          # sysctl temizliği ve değişimi
+          sudo rm -f /usr/bin/sysctl /bin/sysctl /usr/sbin/sysctl /sbin/sysctl
           sudo tee /usr/sbin/sysctl > /dev/null << 'EOF'
           #!/bin/sh
           if echo "$*" | grep -q "hw.memsize"; then
@@ -48,8 +48,8 @@ jobs:
           sudo chmod +x /usr/sbin/sysctl
           sudo ln -sf /usr/sbin/sysctl /usr/bin/sysctl
           sudo ln -sf /usr/sbin/sysctl /bin/sysctl
-          sudo ln -sf /usr/sbin/sysctl /sbin/sysctl
 
+          # xcrun temizliği ve değişimi
           sudo rm -f /usr/bin/xcrun /bin/xcrun
           sudo tee /usr/bin/xcrun > /dev/null << 'EOF'
           #!/bin/sh
@@ -57,13 +57,14 @@ jobs:
           EOF
           sudo chmod +x /usr/bin/xcrun
 
+          # sw_vers temizliği ve değişimi
           sudo rm -f /usr/bin/sw_vers /bin/sw_vers
           sudo tee /usr/bin/sw_vers > /dev/null << 'EOF'
           #!/bin/sh
           echo "ProductVersion: 13.0"
           EOF
           sudo chmod +x /usr/bin/sw_vers
-
+          
       - name: Start Kernel Compilation
         run: |
           cd xnu
