@@ -33,9 +33,8 @@ jobs:
           find . -type f \( -name "Makefile*" -o -name "*.cmd" -o -name "*.make" \) -exec sed -i 's|/usr/bin/xcrun|true|g' {} +
           find . -type f \( -name "Makefile*" -o -name "*.cmd" -o -name "*.make" \) -exec sed -i 's|\bcrun\b|true|g' {} +
 
-          # MakeInc.cmd içindeki dinamik bellek hesaplamasını sabit değere sabitliyoruz
-          sed -i '475s/.*/MEMSIZE := 8589934592/' makedefs/MakeInc.cmd
-          sed -i '476s/.*/$(info Bypassed dynamic memory check)/' makedefs/MakeInc.cmd
+          # MakeInc.cmd içindeki sorunlu dinamik bellek ve wordlist bloğunu tamamen yorum satırına alıyoruz
+          sed -i '465,495s/^/#/' makedefs/MakeInc.cmd
 
       - name: Re-apply Mock System Binaries
         run: |
