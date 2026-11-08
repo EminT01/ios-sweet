@@ -39,7 +39,9 @@ jobs:
           # MakeInc.top içindeki word fonksiyonunu bypass ediyoruz
           sed -i '375s/.*/# bypassed word check/' makedefs/MakeInc.top
 
-          # Makefile içinde x86 varsayılanlarını override komutlarıyla kesin olarak eziyoruz
+          # Makefile içindeki x86_64 varsayılan platform sorgularını ARM64 ve TULIP ile eziyoruz
+          sed -i 's/x86_64/ARM64/g' Makefile || true
+          sed -i 's/VMAPPLE/TULIP/g' Makefile || true
           sed -i '1s/^/override ARCH_CONFIG := ARM64\noverride MACHINE_CONFIG := TULIP\noverride PLATFORM := TULIP\noverride TARGET_CONFIG_PLATFORM := TULIP\n/' Makefile
 
       - name: Re-apply Mock System Binaries
@@ -78,14 +80,14 @@ jobs:
       - name: Create Custom Tulip Machine Config
         run: |
           cd xnu
-          mkdir -p conf/tulip
-          echo "ARCH_CONFIG = ARM64" > conf/tulip/Makefile.conf
-          echo "MACHINE_CONFIG = TULIP" >> conf/tulip/Makefile.conf
-          echo "KERNEL_CONFIGS = DEVELOPMENT" >> conf/tulip/Makefile.conf
-          echo "HOST_OS_VERSION = 220000" >> conf/tulip/Makefile.conf
-          echo "RC_ProjectSourceVersion = 8792" >> conf/tulip/Makefile.conf
-          echo "RC_ProjectSourceRelease = 41" >> conf/tulip/Makefile.conf
-          echo "RC_ProjectName = xnu" >> conf/tulip/Makefile.conf
+          mkdir -p conf/TULIP
+          echo "ARCH_CONFIG = ARM64" > conf/TULIP/Makefile.conf
+          echo "MACHINE_CONFIG = TULIP" >> conf/TULIP/Makefile.conf
+          echo "KERNEL_CONFIGS = DEVELOPMENT" >> conf/TULIP/Makefile.conf
+          echo "HOST_OS_VERSION = 220000" >> conf/TULIP/Makefile.conf
+          echo "RC_ProjectSourceVersion = 8792" >> conf/TULIP/Makefile.conf
+          echo "RC_ProjectSourceRelease = 41" >> conf/TULIP/Makefile.conf
+          echo "RC_ProjectName = xnu" >> conf/TULIP/Makefile.conf
 
       - name: Start Kernel Compilation
         run: |
