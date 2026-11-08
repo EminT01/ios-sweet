@@ -29,7 +29,7 @@ jobs:
           find osfmk/ -name "*.h" -o -name "*.c" -o -name "*.s" -type f -exec sed -i 's/#if defined(__ARM_LSE__)/#if 0/g' {} +
           find osfmk/ -name "*.h" -o -name "*.c" -o -name "*.s" -type f -exec sed -i 's/#ifdef __ARM_LSE__/#if 0/g' {} +
 
-      - name: Setup Mock Tools and Path
+      - name: Start Kernel Compilation
         run: |
           mkdir -p workspace_bin
           
@@ -57,11 +57,7 @@ jobs:
           EOF
 
           chmod +x workspace_bin/xcrun workspace_bin/sw_vers workspace_bin/sysctl
-          
-          # Bu klasörü kalıcı olarak PATH'e ekliyoruz ki tüm make komutları bunu kullansın
-          echo "$(pwd)/workspace_bin" >> $GITHUB_PATH
 
-      - name: Start Kernel Compilation
-        run: |
+          # Derlemeyi doğrudan PATH öneki ile tetikliyoruz ki sahte sysctl ezilmesin
           cd xnu
-          make SDKROOT=iphoneos ARCH=arm64 KERNEL_CONFIGS="DEVELOPMENT" MACHINE_CONFIGS="TULIP" RC_CFLAGS="-arch arm64" SKIP_HOST_VERSION_CHECK=1
+          PATH="$(pwd)/../workspace_bin:$PATH" make SDKROOT=iphoneos ARCH=arm64 KERNEL_CONFIGS="DEVELOPMENT" MACHINE_CONFIGS="TULIP" RC_CFLAGS="-arch arm64" SKIP_HOST_VERSION_CHECK=1
