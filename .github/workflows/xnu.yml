@@ -22,37 +22,16 @@ jobs:
           wget -O apple-xnu.tar.gz https://github.com/apple-oss-distributions/xnu/archive/refs/tags/xnu-8792.41.9.tar.gz
           tar -xzf apple-xnu.tar.gz --strip-components=1 -C xnu
 
-      - name: Apply Architecture Downgrade and LSE Patches
+      - name: Apply Architecture Downgrade, LSE and Sysctl Bypass Patches
         run: |
           cd xnu
           find makedefs/ -type f -exec sed -i 's/-march=armv8.[1-9]-a/-march=armv8-a/g' {} +
           find osfmk/ -name "*.h" -o -name "*.c" -o -name "*.s" -type f -exec sed -i 's/#if defined(__ARM_LSE__)/#if 0/g' {} +
           find osfmk/ -name "*.h" -o -name "*.c" -o -name "*.s" -type f -exec sed -i 's/#ifdef __ARM_LSE__/#if 0/g' {} +
-
-      - name: Setup Global Mock Tools
-        run: |
-          sudo mkdir -p /usr/local/bin
           
-          echo '#!/bin/sh' | sudo tee /usr/local/bin/xcrun > /dev/null
-          echo 'exit 0' | sudo tee -a /usr/local/bin/xcrun > /dev/null
-
-          echo '#!/bin/sh' | sudo tee /usr/local/bin/sw_vers > /dev/null
-          echo 'echo "ProductVersion: 13.0"' | sudo tee -a /usr/local/bin/sw_vers > /dev/null
-
-          sudo tee /usr/local/bin/sysctl > /dev/null << 'EOF'
-          #!/bin/sh
-          if [ "$1" = "-n" ] && [ "$2" = "hw.memsize" ]; then
-              echo 8589934592
-          elif [ "$1" = "-n" ] && [ "$2" = "hw.logicalcpu" ]; then
-              echo 4
-          elif [ "$1" = "-n" ] && [ "$2" = "hw.physicalcpu" ]; then
-              echo 2
-          else
-              echo 8589934592
-          fi
-          EOF
-
-          sudo chmod +x /usr/local/bin/xcrun /usr/local/bin/sw_vers /usr/local/bin/sysctl
+          # MakeInc.cmd içerisindeki sysctl bellek sorgusunu doğrudan sabit 8GB (8589934592) olarak yamalıyoruz
+          sed -i 's/\$(shell sysctl -n hw\.memsize)/8589934592/g' makedefs/MakeInc.cmd
+          sed -i 's/sysctl -n/echo/g' makedefs/MakeInc.cmd
 
       - name: Start Kernel Compilation
         run: |
