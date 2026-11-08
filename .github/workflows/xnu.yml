@@ -68,4 +68,12 @@ jobs:
       - name: Start Kernel Compilation
         run: |
           cd xnu
-          make SDKROOT=iphoneos ARCH=arm64 KERNEL_CONFIGS="DEVELOPMENT" MACHINE_CONFIGS="TULIP" RC_CFLAGS="-arch arm64" SKIP_HOST_VERSION_CHECK=1
+          
+          # TULIP hedef konfigürasyonunu XNU build sistemine tanıtıyoruz
+          mkdir -p conf/tulip
+          echo "ARCH_CONFIG = arm64" > conf/tulip/Makefile.conf
+          echo "MACHINE_CONFIG = tulip" >> conf/tulip/Makefile.conf
+          echo "KERNEL_CONFIGS = DEVELOPMENT" >> conf/tulip/Makefile.conf
+
+          # Derlemeyi TULIP yerine standart arm64 hedefiyle başlatıyoruz
+          make SDKROOT=iphoneos ARCH=arm64 KERNEL_CONFIGS="DEVELOPMENT" MACHINE_CONFIGS="tulip" RC_CFLAGS="-arch arm64" SKIP_HOST_VERSION_CHECK=1
