@@ -31,16 +31,20 @@ jobs:
 
       - name: Start Kernel Compilation
         run: |
-          cd xnu
-          sudo mkdir -p /usr/local/bin
+          # Proje dizininde özel bir bin klasörü oluşturuyoruz
+          mkdir -p workspace_bin
           
-          echo '#!/bin/sh' | sudo tee /usr/local/bin/xcrun > /dev/null
-          echo 'exit 0' | sudo tee -a /usr/local/bin/xcrun > /dev/null
+          cat << 'EOF' > workspace_bin/xcrun
+          #!/bin/sh
+          exit 0
+          EOF
 
-          echo '#!/bin/sh' | sudo tee /usr/local/bin/sw_vers > /dev/null
-          echo 'echo "ProductVersion: 13.0"' | sudo tee -a /usr/local/bin/sw_vers > /dev/null
+          cat << 'EOF' > workspace_bin/sw_vers
+          #!/bin/sh
+          echo "ProductVersion: 13.0"
+          EOF
 
-          sudo tee /usr/local/bin/sysctl > /dev/null << 'EOF'
+          cat << 'EOF' > workspace_bin/sysctl
           #!/bin/sh
           if [ "$1" = "-n" ] && [ "$2" = "hw.memsize" ]; then
               echo "8589934592"
@@ -53,6 +57,10 @@ jobs:
           fi
           EOF
 
-          sudo chmod +x /usr/local/bin/xcrun /usr/local/bin/sw_vers /usr/local/bin/sysctl
+          chmod +x workspace_bin/xcrun workspace_bin/sw_vers workspace_bin/sysctl
+          
+          # Bu dizini PATH'in en başına ekliyoruz ki sisteminkiler değil bizimkiler çalışsın
+          export PATH="$(pwd)/workspace_bin:$PATH"
 
+          cd xnu
           make SDKROOT=iphoneos ARCH=arm64 KERNEL_CONFIGS="DEVELOPMENT" MACHINE_CONFIGS="TULIP" RC_CFLAGS="-arch arm64" SKIP_HOST_VERSION_CHECK=1
