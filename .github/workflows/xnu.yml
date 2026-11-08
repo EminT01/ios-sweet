@@ -28,36 +28,36 @@ jobs:
           find makedefs/ -type f -exec sed -i 's/-march=armv8.[1-9]-a/-march=armv8-a/g' {} +
           find osfmk/ -name "*.h" -o -name "*.c" -o -name "*.s" -type f -exec sed -i 's/#if defined(__ARM_LSE__)/#if 0/g' {} +
           find osfmk/ -name "*.h" -o -name "*.c" -o -name "*.s" -type f -exec sed -i 's/#ifdef __ARM_LSE__/#if 0/g' {} +
-
-      - name: Start Kernel Compilation
+- name: Start Kernel Compilation
         run: |
           cd xnu
           
-          # Sahte araçları sistem yoluna yerleştiriyoruz
-          sudo tee /usr/local/bin/xcrun > /dev/null << 'EOF'
-          #!/bin/sh
-          exit 0
-          EOF
+          # Sahte komutları /usr/local/bin altına hatasız ve doğrudan yazıyoruz
+          sudo mkdir -p /usr/local/bin
+          
+          echo '#!/bin/sh' | sudo tee /usr/local/bin/xcrun > /dev/null
+          echo 'exit 0' | sudo tee -a /usr/local/bin/xcrun > /dev/null
 
-          sudo tee /usr/local/bin/sw_vers > /dev/null << 'EOF'
-          #!/bin/sh
-          echo "ProductVersion: 13.0"
-          EOF
+          echo '#!/bin/sh' | sudo tee /usr/local/bin/sw_vers > /dev/null
+          echo 'echo "ProductVersion: 13.0"' | sudo tee -a /usr/local/bin/sw_vers > /dev/null
 
           sudo tee /usr/local/bin/sysctl > /dev/null << 'EOF'
           #!/bin/sh
           if [ "$1" = "-n" ] && [ "$2" = "hw.memsize" ]; then
-              echo 8589934592
+              echo "8589934592"
           elif [ "$1" = "-n" ] && [ "$2" = "hw.logicalcpu" ]; then
-              echo 4
+              echo "4"
           elif [ "$1" = "-n" ] && [ "$2" = "hw.physicalcpu" ]; then
-              echo 2
+              echo "2"
           else
-              echo 1
+              echo "8589934592"
           fi
           EOF
 
           sudo chmod +x /usr/local/bin/xcrun /usr/local/bin/sw_vers /usr/local/bin/sysctl
 
+          # Derlemeyi başlat
+          make SDKROOT=iphoneos ARCH=arm64 KERNEL_CONFIGS="DEVELOPMENT" MACHINE_CONFIGS="TULIP" RC_CFLAGS="-arch arm64" SKIP_HOST_VERSION_CHECK=1
+      
           # Derlemeyi başlat
           make SDKROOT=iphoneos ARCH=arm64 KERNEL_CONFIGS="DEVELOPMENT" MACHINE_CONFIGS="TULIP" RC_CFLAGS="-arch arm64" SKIP_HOST_VERSION_CHECK=1
