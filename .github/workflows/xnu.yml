@@ -22,55 +22,26 @@ jobs:
           wget -O apple-xnu.tar.gz https://github.com/apple-oss-distributions/xnu/archive/refs/tags/xnu-8792.41.9.tar.gz
           tar -xzf apple-xnu.tar.gz --strip-components=1 -C xnu
 
-      - name: Apply Architecture Downgrade and LSE Patches
+      - name: Apply Architecture Downgrade, LSE and Sysctl Bypass Patches
         run: |
           cd xnu
           find makedefs/ -type f -exec sed -i 's/-march=armv8.[1-9]-a/-march=armv8-a/g' {} +
           find osfmk/ -name "*.h" -o -name "*.c" -o -name "*.s" -type f -exec sed -i 's/#if defined(__ARM_LSE__)/#if 0/g' {} +
           find osfmk/ -name "*.h" -o -name "*.c" -o -name "*.s" -type f -exec sed -i 's/#ifdef __ARM_LSE__/#if 0/g' {} +
+          
+          # MakeInc.cmd içerisindeki sysctl bellek sorgusunu doğrudan sabit 8GB (8589934592) olarak yamalıyoruz
+          sed -i 's/\$(shell sysctl -n hw\.memsize)/8589934592/g' makedefs/MakeInc.cmd
+          sed -i 's/sysctl -n/echo/g' makedefs/MakeInc.cmd
 
       - name: Create Custom Tulip Machine Config
         run: |
           cd xnu
           mkdir -p conf/tulip
-          echo "ARCH_CONFIG = arm64" > conf/tulip/Makefile.conf
-          echo "MACHINE_CONFIG = tulip" >> conf/tulip/Makefile.conf
+          echo "ARCH_CONFIG = ARM64" > conf/tulip/Makefile.conf
+          echo "MACHINE_CONFIG = TULIP" >> conf/tulip/Makefile.conf
           echo "KERNEL_CONFIGS = DEVELOPMENT" >> conf/tulip/Makefile.conf
-
-      - name: Re-apply Mock System Binaries
-        run: |
-          sudo rm -f /usr/bin/sysctl /bin/sysctl /usr/sbin/sysctl /sbin/sysctl
-          sudo tee /usr/sbin/sysctl > /dev/null << 'EOF'
-          #!/bin/sh
-          if echo "$*" | grep -q "hw.memsize"; then
-              echo "8589934592"
-          elif echo "$*" | grep -q "hw.logicalcpu"; then
-              echo "4"
-          elif echo "$*" | grep -q "hw.physicalcpu"; then
-              echo "2"
-          else
-              echo "8589934592"
-          fi
-          EOF
-          sudo chmod +x /usr/sbin/sysctl
-          sudo ln -sf /usr/sbin/sysctl /usr/bin/sysctl
-          sudo ln -sf /usr/sbin/sysctl /bin/sysctl
-
-          sudo rm -f /usr/bin/xcrun /bin/xcrun
-          sudo tee /usr/bin/xcrun > /dev/null << 'EOF'
-          #!/bin/sh
-          exit 0
-          EOF
-          sudo chmod +x /usr/bin/xcrun
-
-          sudo rm -f /usr/bin/sw_vers /bin/sw_vers
-          sudo tee /usr/bin/sw_vers > /dev/null << 'EOF'
-          #!/bin/sh
-          echo "ProductVersion: 13.0"
-          EOF
-          sudo chmod +x /usr/bin/sw_vers
 
       - name: Start Kernel Compilation
         run: |
           cd xnu
-          make SDKROOT=iphoneos ARCH=arm64 KERNEL_CONFIGS="DEVELOPMENT" MACHINE_CONFIGS="tulip" SKIP_HOST_VERSION_CHECK=1
+          make SDKROOT=iphoneos ARCH_CONFIG_EXPLICIT=ARM64 MACHINE_CONFIG=TULIP KERNEL_CONFIGS=DEVELOPMENT SKIP_HOST_VERSION_CHECK=1
