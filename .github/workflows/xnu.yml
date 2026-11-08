@@ -29,36 +29,35 @@ jobs:
           find osfmk/ -name "*.h" -o -name "*.c" -o -name "*.s" -type f -exec sed -i 's/#if defined(__ARM_LSE__)/#if 0/g' {} +
           find osfmk/ -name "*.h" -o -name "*.c" -o -name "*.s" -type f -exec sed -i 's/#ifdef __ARM_LSE__/#if 0/g' {} +
 
-      - name: Start Kernel Compilation
+     - name: Start Kernel Compilation
         run: |
           cd xnu
           
-          # macOS'a özel komutları ve sysctl isteklerini Linux'ta hatasız taklit eden araçlar
-          mkdir -p /tmp/bin
-          
-          cat << 'EOF' > /tmp/bin/xcrun
+          # Sahte komutları doğrudan /usr/local/bin altına yazarak tüm sistemin görmesini sağlıyoruz
+          sudo tee /usr/local/bin/xcrun > /dev/null << 'EOF'
+          #!/bin/sh
           exit 0
           EOF
 
-          cat << 'EOF' > /tmp/bin/sw_vers
+          sudo tee /usr/local/bin/sw_vers > /dev/null << 'EOF'
+          #!/bin/sh
           echo "ProductVersion: 13.0"
           EOF
 
-          cat << 'EOF' > /tmp/bin/sysctl
-          # Make sisteminin beklediği saf sayısal değerleri doğrudan döndürüyoruz
-          if echo "$*" | grep -q "hw.memsize"; then
-              echo "8589934592"
-          elif echo "$*" | grep -q "hw.logicalcpu"; then
-              echo "4"
-          elif echo "$*" | grep -q "hw.physicalcpu"; then
-              echo "2"
+          sudo tee /usr/local/bin/sysctl > /dev/null << 'EOF'
+          #!/bin/sh
+          if [ "$1" = "-n" ] && [ "$2" = "hw.memsize" ]; then
+              echo 8589934592
+          elif [ "$1" = "-n" ] && [ "$2" = "hw.logicalcpu" ]; then
+              echo 4
+          elif [ "$1" = "-n" ] && [ "$2" = "hw.physicalcpu" ]; then
+              echo 2
           else
-              echo "0"
+              echo 1
           fi
           EOF
 
-          chmod +x /tmp/bin/xcrun /tmp/bin/sw_vers /tmp/bin/sysctl
-          export PATH="/tmp/bin:$PATH"
+          sudo chmod +x /usr/local/bin/xcrun /usr/local/bin/sw_vers /usr/local/bin/sysctl
 
-          # XNU make sistemine uygun doğru değişken adlarıyla derlemeyi tetikliyoruz
-          make SDKROOT=iphoneos ARCH=arm64 KERNEL_CONFIGS="DEVELOPMENT" MACHINE_CONFIGS="TULIP" RC_CFLAGS="-arch arm64"
+          # Derlemeyi başlat
+          make SDKROOT=iphoneos ARCH=arm64 KERNEL_CONFIGS="DEVELOPMENT" MACHINE_CONFIGS="TULIP" RC_CFLAGS="-arch arm64" SKIP_HOST_VERSION_CHECK=1
