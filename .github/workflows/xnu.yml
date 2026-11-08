@@ -36,8 +36,11 @@ jobs:
           # MakeInc.cmd içindeki sorunlu dinamik bloğu kapatıyoruz
           sed -i '465,495s/^/#/' makedefs/MakeInc.cmd
 
-          # MakeInc.top içindeki 375. satırdaki word fonksiyonunun patlamaması için satırı bypass ediyoruz
+          # MakeInc.top içindeki word fonksiyonunu bypass ediyoruz
           sed -i '375s/.*/# bypassed word check/' makedefs/MakeInc.top
+
+          # X86 varsayılanını ARM64 olarak Makefile seviyesinde zorluyoruz
+          sed -i 's/DEFAULT_PLATFORM ?= x86_64/DEFAULT_PLATFORM ?= ARM64/g' Makefile
 
       - name: Re-apply Mock System Binaries
         run: |
@@ -87,4 +90,4 @@ jobs:
       - name: Start Kernel Compilation
         run: |
           cd xnu
-          make SDKROOT=iphoneos ARCH_CONFIG_EXPLICIT=ARM64 MACHINE_CONFIG=TULIP KERNEL_CONFIGS=DEVELOPMENT HOST_OS_VERSION=220000 RC_ProjectSourceVersion=8792 RC_ProjectSourceRelease=41 RC_ProjectName=xnu SKIP_HOST_VERSION_CHECK=1
+          make SDKROOT=iphoneos ARCH_CONFIG_EXPLICIT=ARM64 PLATFORM=ARM64 MACHINE_CONFIG=TULIP KERNEL_CONFIGS=DEVELOPMENT HOST_OS_VERSION=220000 RC_ProjectSourceVersion=8792 RC_ProjectSourceRelease=41 RC_ProjectName=xnu SKIP_HOST_VERSION_CHECK=1
