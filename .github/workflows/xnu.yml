@@ -29,9 +29,8 @@ jobs:
           find osfmk/ -name "*.h" -o -name "*.c" -o -name "*.s" -type f -exec sed -i 's/#if defined(__ARM_LSE__)/#if 0/g' {} +
           find osfmk/ -name "*.h" -o -name "*.c" -o -name "*.s" -type f -exec sed -i 's/#ifdef __ARM_LSE__/#if 0/g' {} +
 
-      - name: Start Kernel Compilation
+      - name: Setup Mock Tools and Path
         run: |
-          # Proje dizininde özel bir bin klasörü oluşturuyoruz
           mkdir -p workspace_bin
           
           cat << 'EOF' > workspace_bin/xcrun
@@ -59,8 +58,10 @@ jobs:
 
           chmod +x workspace_bin/xcrun workspace_bin/sw_vers workspace_bin/sysctl
           
-          # Bu dizini PATH'in en başına ekliyoruz ki sisteminkiler değil bizimkiler çalışsın
-          export PATH="$(pwd)/workspace_bin:$PATH"
+          # Bu klasörü kalıcı olarak PATH'e ekliyoruz ki tüm make komutları bunu kullansın
+          echo "$(pwd)/workspace_bin" >> $GITHUB_PATH
 
+      - name: Start Kernel Compilation
+        run: |
           cd xnu
           make SDKROOT=iphoneos ARCH=arm64 KERNEL_CONFIGS="DEVELOPMENT" MACHINE_CONFIGS="TULIP" RC_CFLAGS="-arch arm64" SKIP_HOST_VERSION_CHECK=1
