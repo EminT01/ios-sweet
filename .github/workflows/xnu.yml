@@ -33,7 +33,7 @@ jobs:
           find . -type f \( -name "Makefile*" -o -name "*.cmd" -o -name "*.make" \) -exec sed -i 's|/usr/bin/xcrun|true|g' {} +
           find . -type f \( -name "Makefile*" -o -name "*.cmd" -o -name "*.make" \) -exec sed -i 's|\bcrun\b|true|g' {} +
 
-          # MakeInc.cmd içindeki sorunlu dinamik bloğu kapatıp eksik değişkenleri tamamlıyoruz
+          # MakeInc.cmd içindeki sorunlu dinamik bloğu kapatıyoruz
           sed -i '465,495s/^/#/' makedefs/MakeInc.cmd
 
       - name: Re-apply Mock System Binaries
@@ -78,8 +78,9 @@ jobs:
           echo "KERNEL_CONFIGS = DEVELOPMENT" >> conf/tulip/Makefile.conf
           echo "HOST_OS_VERSION = 220000" >> conf/tulip/Makefile.conf
           echo "RC_ProjectSourceVersion = 8792419" >> conf/tulip/Makefile.conf
+          echo "RC_ProjectSourceRelease = GM" >> conf/tulip/Makefile.conf
 
       - name: Start Kernel Compilation
         run: |
           cd xnu
-          make SDKROOT=iphoneos ARCH_CONFIG_EXPLICIT=ARM64 MACHINE_CONFIG=TULIP KERNEL_CONFIGS=DEVELOPMENT HOST_OS_VERSION=220000 RC_ProjectSourceVersion=8792419 SKIP_HOST_VERSION_CHECK=1
+          make SDKROOT=iphoneos ARCH_CONFIG_EXPLICIT=ARM64 MACHINE_CONFIG=TULIP KERNEL_CONFIGS=DEVELOPMENT HOST_OS_VERSION=220000 RC_ProjectSourceVersion=8792419 RC_ProjectSourceRelease=GM SKIP_HOST_VERSION_CHECK=1
