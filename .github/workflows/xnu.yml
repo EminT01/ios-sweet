@@ -1,94 +1,107 @@
-name: Build XNU Kernel for Tulip - Experimental
+name: Build XNU Kernel for Tulip
 
 on:
   workflow_dispatch:
+    inputs:
+      macos_version:
+        description: macOS release whose xnu to build (13.5 = xnu-8796, iOS 16 era)
+        default: "13.5"
+      kernel_config:
+        description: RELEASE / DEVELOPMENT / DEBUG
+        default: DEVELOPMENT
+      machine_config:
+        description: xnu MACHINE_CONFIG
+        default: TULIP
+      keep_going:
+        description: make -k (collect all compile errors in one run)
+        default: "true"
+  push:
+    branches: [main]
+    paths:
+      - "xnu/patches/**"
+      - "tools/patch_dxb.py"
+      - ".github/workflows/xnu-tulip.yml"
+
+concurrency:
+  group: xnu-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DXB_REPO: https://github.com/blacktop/darwin-xnu-build
+  DXB_SHA: 663906528d1cd5ea8fde7de6f16de73db9511549
+  MACOS_VERSION: ${{ inputs.macos_version || '13.5' }}
+  KERNEL_CONFIG: ${{ inputs.kernel_config || 'DEVELOPMENT' }}
+  MACHINE_CONFIG: ${{ inputs.machine_config || 'TULIP' }}
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    # macos-14, xnu-8796 IORPC ABI ile tam uyumlu Xcode 15.x sürümünü barındırır
+    runs-on: macos-14
+    timeout-minutes: 120
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v4
+
+      - name: Fetch build script
+        run: |
+          git init -q dxb
+          git -C dxb fetch -q --depth 1 "$DXB_REPO" "$DXB_SHA"
+          git -C dxb checkout -q FETCH_HEAD
+          # Tulip ve Darwin açık kaynak yamalarını kopyalıyoruz
+          cp xnu/patches/*.patch xnu/patches/*.sh dxb/patches/ || true
+          # dxb/build.sh dosyasını arm64 ve tulip mimarisine göre işleme sokuyoruz
+          python3 tools/patch_dxb.py dxb/build.sh || true
+          ls dxb/patches
+
+      - name: Dependencies
+        run: |
+          brew install jq gum bash cmake ninja
+          printf '#!/bin/sh\nexit 0\n' | sudo tee /usr/local/bin/xcodes >/dev/null
+          sudo chmod +x /usr/local/bin/xcodes
+          sw_vers
+          ls -d /Applications/Xcode*.app
+          XC=$(ls -d /Applications/Xcode_*.app | sort -V | head -1)
+          echo "DEVELOPER_DIR=$XC/Contents/Developer" >> "$GITHUB_ENV"
+          sudo xcode-select -s "$XC"
+          xcodebuild -version
+          xcrun --find iig
+
+      - name: Build XNU Kernel for Tulip
+        working-directory: dxb
+        env:
+          MAKEFLAGS: ${{ inputs.keep_going == 'false' && '' || '-k' }}
+        run: bash build.sh
+
+      - name: Package build tree
+        if: always()
+        run: |
+          SDK=$(xcrun --sdk macosx --show-sdk-path)
+          mkdir -p sdk-kernel-platform
+          cp -R "$SDK/System/Library/Frameworks/Kernel.framework/Versions/A/PrivateHeaders/platform" sdk-kernel-platform/ || true
+          tar czf buildtree.tgz \
+            --exclude='*.o' --exclude='*.cpo' --exclude='*.a' --exclude='*.dSYM' --exclude='*.unstripped' \
+            --exclude='kernel.development.*' --exclude='.git' \
+            -C dxb build/xnu.obj fakeroot/usr/local/include xnu \
+            -C .. sdk-kernel-platform || true
+          ls -la buildtree.tgz || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          submodules: recursive
+          name: xnu-buildtree-tulip
+          path: buildtree.tgz
+          retention-days: 7
 
-      - name: Install Dependencies
+      - name: Collect Output
+        if: always()
         run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential clang llvm python3 libssl-dev zlib1g-dev wget curl git coreutils
+          mkdir -p out
+          cp -R dxb/fakeroot/System/Library/Kernels/. out/ 2>/dev/null || true
+          ls -la out
+          (cd out && shasum -a 256 kernel.* > SHA256SUMS) || true
 
-      - name: Download Apple XNU Source
-        run: |
-          wget -O apple-xnu.tar.gz https://github.com/apple-oss-distributions/xnu/archive/refs/tags/xnu-8792.41.9.tar.gz
-          tar -xzf apple-xnu.tar.gz --strip-components=1 -C xnu
-
-      - name: Apply Deep Architecture, Xcrun and Sysctl Patches
-        run: |
-          cd xnu
-          # Mimari ve LSE çakışma yamaları
-          find makedefs/ -type f -exec sed -i 's/-march=armv8.[1-9]-a/-march=armv8-a/g' {} +
-          find osfmk/ -name "*.h" -o -name "*.c" -o -name "*.s" -type f -exec sed -i 's/#if defined(__ARM_LSE__)/#if 0/g' {} +
-          find osfmk/ -name "*.h" -o -name "*.c" -o -name "*.s" -type f -exec sed -i 's/#ifdef __ARM_LSE__/#if 0/g' {} +
-
-          find . -type f \( -name "Makefile*" -o -name "*.cmd" -o -name "*.make" \) -exec sed -i 's|/usr/bin/xcrun|true|g' {} +
-          find . -type f \( -name "Makefile*" -o -name "*.cmd" -o -name "*.make" \) -exec sed -i 's|\bcrun\b|true|g' {} +
-
-          # MakeInc.cmd içindeki sorunlu dinamik bloğu kapatıyoruz
-          sed -i '465,495s/^/#/' makedefs/MakeInc.cmd
-
-          # MakeInc.top içindeki word fonksiyonunu bypass ediyoruz
-          sed -i '375s/.*/# bypassed word check/' makedefs/MakeInc.top
-
-          # Makefile içindeki x86_64 sorgularını ARM64 ile eziyoruz
-          sed -i 's/x86_64/ARM64/g' Makefile || true
-
-      - name: Re-apply Mock System Binaries
-        run: |
-          sudo rm -f /usr/bin/sysctl /bin/sysctl /usr/sbin/sysctl /sbin/sysctl
-          sudo tee /usr/sbin/sysctl > /dev/null << 'EOF'
-          #!/bin/sh
-          if echo "$*" | grep -q "hw.memsize"; then
-              echo "8589934592"
-          elif echo "$*" | grep -q "hw.logicalcpu"; then
-              echo "4"
-          elif echo "$*" | grep -q "hw.physicalcpu"; then
-              echo "2"
-          else
-              echo "8589934592"
-          fi
-          EOF
-          sudo chmod +x /usr/sbin/sysctl
-          sudo ln -sf /usr/sbin/sysctl /usr/bin/sysctl
-          sudo ln -sf /usr/sbin/sysctl /bin/sysctl
-
-          sudo rm -f /usr/bin/xcrun /bin/xcrun
-          sudo tee /usr/bin/xcrun > /dev/null << 'EOF'
-          #!/bin/sh
-          exit 0
-          EOF
-          sudo chmod +x /usr/bin/xcrun
-
-          sudo rm -f /usr/bin/sw_vers /bin/sw_vers
-          sudo tee /usr/bin/sw_vers > /dev/null << 'EOF'
-          #!/bin/sh
-          echo "ProductVersion: 13.0"
-          EOF
-          sudo chmod +x /usr/bin/sw_vers
-
-      - name: Create Proper TULIP Machine Config Structure
-        run: |
-          cd xnu
-          mkdir -p conf/TULIP
-          echo "ARCH_CONFIG = ARM64" > conf/TULIP/Makefile.conf
-          echo "MACHINE_CONFIG = TULIP" >> conf/TULIP/Makefile.conf
-          echo "KERNEL_CONFIGS = DEVELOPMENT" >> conf/TULIP/Makefile.conf
-          echo "PLATFORM = iPhoneOS" >> conf/TULIP/Makefile.conf
-          
-          # XNU build sisteminin hedefi tanıması için gerekli şablon dosyalarını oluşturuyoruz
-          echo "include ../Makefile.template" > conf/TULIP/Makefile
-          echo "Configures iOS ARM64 target for Tulip" > conf/TULIP/README
-
-      - name: Start Kernel Compilation
-        run: |
-          cd xnu
-          make SDKROOT=iphoneos ARCH_CONFIG=ARM64 PLATFORM=iPhoneOS MACHINE_CONFIG=TULIP KERNEL_CONFIGS=DEVELOPMENT TARGET_CONFIG_PLATFORM=iPhoneOS HOST_OS_VERSION=220000 RC_ProjectSourceVersion=8792 RC_ProjectSourceRelease=41 RC_ProjectName=xnu SKIP_HOST_VERSION_CHECK=1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: xnu-kernel-tulip
+          path: out/
+          if-no-files-found: warn
