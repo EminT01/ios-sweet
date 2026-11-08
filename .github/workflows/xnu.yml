@@ -29,35 +29,32 @@ jobs:
           find osfmk/ -name "*.h" -o -name "*.c" -o -name "*.s" -type f -exec sed -i 's/#if defined(__ARM_LSE__)/#if 0/g' {} +
           find osfmk/ -name "*.h" -o -name "*.c" -o -name "*.s" -type f -exec sed -i 's/#ifdef __ARM_LSE__/#if 0/g' {} +
 
-      - name: Start Kernel Compilation
+      - name: Setup Global Mock Tools
         run: |
-          mkdir -p workspace_bin
+          sudo mkdir -p /usr/local/bin
           
-          cat << 'EOF' > workspace_bin/xcrun
-          #!/bin/sh
-          exit 0
-          EOF
+          echo '#!/bin/sh' | sudo tee /usr/local/bin/xcrun > /dev/null
+          echo 'exit 0' | sudo tee -a /usr/local/bin/xcrun > /dev/null
 
-          cat << 'EOF' > workspace_bin/sw_vers
-          #!/bin/sh
-          echo "ProductVersion: 13.0"
-          EOF
+          echo '#!/bin/sh' | sudo tee /usr/local/bin/sw_vers > /dev/null
+          echo 'echo "ProductVersion: 13.0"' | sudo tee -a /usr/local/bin/sw_vers > /dev/null
 
-          cat << 'EOF' > workspace_bin/sysctl
+          sudo tee /usr/local/bin/sysctl > /dev/null << 'EOF'
           #!/bin/sh
           if [ "$1" = "-n" ] && [ "$2" = "hw.memsize" ]; then
-              echo "8589934592"
+              echo 8589934592
           elif [ "$1" = "-n" ] && [ "$2" = "hw.logicalcpu" ]; then
-              echo "4"
+              echo 4
           elif [ "$1" = "-n" ] && [ "$2" = "hw.physicalcpu" ]; then
-              echo "2"
+              echo 2
           else
-              echo "8589934592"
+              echo 8589934592
           fi
           EOF
 
-          chmod +x workspace_bin/xcrun workspace_bin/sw_vers workspace_bin/sysctl
+          sudo chmod +x /usr/local/bin/xcrun /usr/local/bin/sw_vers /usr/local/bin/sysctl
 
-          # Derlemeyi doğrudan PATH öneki ile tetikliyoruz ki sahte sysctl ezilmesin
+      - name: Start Kernel Compilation
+        run: |
           cd xnu
-          PATH="$(pwd)/../workspace_bin:$PATH" make SDKROOT=iphoneos ARCH=arm64 KERNEL_CONFIGS="DEVELOPMENT" MACHINE_CONFIGS="TULIP" RC_CFLAGS="-arch arm64" SKIP_HOST_VERSION_CHECK=1
+          make SDKROOT=iphoneos ARCH=arm64 KERNEL_CONFIGS="DEVELOPMENT" MACHINE_CONFIGS="TULIP" RC_CFLAGS="-arch arm64" SKIP_HOST_VERSION_CHECK=1
