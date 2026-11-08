@@ -22,21 +22,28 @@ jobs:
           wget -O apple-xnu.tar.gz https://github.com/apple-oss-distributions/xnu/archive/refs/tags/xnu-8792.41.9.tar.gz
           tar -xzf apple-xnu.tar.gz --strip-components=1 -C xnu
 
-      - name: Apply Architecture Downgrade, LSE and Sysctl Bypass Patches
+      - name: Apply Deep Architecture, Xcrun and Sysctl Patches
         run: |
           cd xnu
+          # Mimari ve LSE yamaları
           find makedefs/ -type f -exec sed -i 's/-march=armv8.[1-9]-a/-march=armv8-a/g' {} +
           find osfmk/ -name "*.h" -o -name "*.c" -o -name "*.s" -type f -exec sed -i 's/#if defined(__ARM_LSE__)/#if 0/g' {} +
           find osfmk/ -name "*.h" -o -name "*.c" -o -name "*.s" -type f -exec sed -i 's/#ifdef __ARM_LSE__/#if 0/g' {} +
-          
-          # MakeInc.cmd içerisindeki sysctl bellek sorgusunu doğrudan sabit 8GB (8589934592) olarak yamalıyoruz
-          sed -i 's/\$(shell sysctl -n hw\.memsize)/8589934592/g' makedefs/MakeInc.cmd
-          sed -i 's/sysctl -n/echo/g' makedefs/MakeInc.cmd
+
+          # Mutlak yollu /usr/bin/xcrun çağrılarını true komutuyla değiştiriyoruz
+          find . -type f \( -name "Makefile*" -o -name "*.cmd" -o -name "*.make" \) -exec sed -i 's|/usr/bin/xcrun|true|g' {} +
+          find . -type f \( -name "Makefile*" -o -name "*.cmd" -o -name "*.make" \) -exec sed -i 's|\bcrun\b|true|g' {} +
+
+          # MakeInc.cmd içindeki sysctl bağımlılığını sabit değerlerle bypass ediyoruz
+          sed -i 's/sysctl -n hw\.memsize/echo 8589934592/g' makedefs/MakeInc.cmd
+          sed -i 's/sysctl -n hw\.logicalcpu/echo 4/g' makedefs/MakeInc.cmd
+          sed -i 's/sysctl -n hw\.physicalcpu/echo 2/g' makedefs/MakeInc.cmd
+          sed -i 's/\$(shell sysctl[^)]*)/8589934592/g' makedefs/MakeInc.cmd
 
       - name: Create Custom Tulip Machine Config
         run: |
           cd xnu
-          mkdir -p conf/tulip 
+          mkdir -p conf/tulip
           echo "ARCH_CONFIG = ARM64" > conf/tulip/Makefile.conf
           echo "MACHINE_CONFIG = TULIP" >> conf/tulip/Makefile.conf
           echo "KERNEL_CONFIGS = DEVELOPMENT" >> conf/tulip/Makefile.conf
