@@ -29,52 +29,15 @@ jobs:
           find osfmk/ -name "*.h" -o -name "*.c" -o -name "*.s" -type f -exec sed -i 's/#if defined(__ARM_LSE__)/#if 0/g' {} +
           find osfmk/ -name "*.h" -o -name "*.c" -o -name "*.s" -type f -exec sed -i 's/#ifdef __ARM_LSE__/#if 0/g' {} +
 
-      - name: Nuke and Replace System Binaries (Nuclear Option)
-        run: |
-          # sysctl temizliği ve değişimi
-          sudo rm -f /usr/bin/sysctl /bin/sysctl /usr/sbin/sysctl /sbin/sysctl
-          sudo tee /usr/sbin/sysctl > /dev/null << 'EOF'
-          #!/bin/sh
-          if echo "$*" | grep -q "hw.memsize"; then
-              echo "8589934592"
-          elif echo "$*" | grep -q "hw.logicalcpu"; then
-              echo "4"
-          elif echo "$*" | grep -q "hw.physicalcpu"; then
-              echo "2"
-          else
-              echo "8589934592"
-          fi
-          EOF
-          sudo chmod +x /usr/sbin/sysctl
-          sudo ln -sf /usr/sbin/sysctl /usr/bin/sysctl
-          sudo ln -sf /usr/sbin/sysctl /bin/sysctl
-
-          # xcrun temizliği ve değişimi
-          sudo rm -f /usr/bin/xcrun /bin/xcrun
-          sudo tee /usr/bin/xcrun > /dev/null << 'EOF'
-          #!/bin/sh
-          exit 0
-          EOF
-          sudo chmod +x /usr/bin/xcrun
-
-          # sw_vers temizliği ve değişimi
-          sudo rm -f /usr/bin/sw_vers /bin/sw_vers
-          sudo tee /usr/bin/sw_vers > /dev/null << 'EOF'
-          #!/bin/sh
-          echo "ProductVersion: 13.0"
-          EOF
-          sudo chmod +x /usr/bin/sw_vers
-          
-      - name: Start Kernel Compilation
+      - name: Create Custom Tulip Machine Config
         run: |
           cd xnu
-          
-          # TULIP hedef konfigürasyonunu XNU build sistemine tanıtıyoruz
           mkdir -p conf/tulip
           echo "ARCH_CONFIG = arm64" > conf/tulip/Makefile.conf
           echo "MACHINE_CONFIG = tulip" >> conf/tulip/Makefile.conf
           echo "KERNEL_CONFIGS = DEVELOPMENT" >> conf/tulip/Makefile.conf
 
-          # Derlemeyi TULIP yerine standart arm64 hedefiyle başlatıyoruz
-          make SDKROOT=iphoneos ARCH=arm64 KERNEL_CONFIGS="DEVELOPMENT" MACHINE_CONFIGS="tulip" RC_CFLAGS="-arch arm64" SKIP_HOST_VERSION_CHECK=1
- 
+      - name: Start Kernel Compilation
+        run: |
+          cd xnu
+          make SDKROOT=iphoneos ARCH=arm64 KERNEL_CONFIGS="DEVELOPMENT" MACHINE_CONFIGS="tulip" SKIP_HOST_VERSION_CHECK=1
