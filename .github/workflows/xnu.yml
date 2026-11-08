@@ -37,6 +37,39 @@ jobs:
           echo "MACHINE_CONFIG = tulip" >> conf/tulip/Makefile.conf
           echo "KERNEL_CONFIGS = DEVELOPMENT" >> conf/tulip/Makefile.conf
 
+      - name: Re-apply Mock System Binaries
+        run: |
+          sudo rm -f /usr/bin/sysctl /bin/sysctl /usr/sbin/sysctl /sbin/sysctl
+          sudo tee /usr/sbin/sysctl > /dev/null << 'EOF'
+          #!/bin/sh
+          if echo "$*" | grep -q "hw.memsize"; then
+              echo "8589934592"
+          elif echo "$*" | grep -q "hw.logicalcpu"; then
+              echo "4"
+          elif echo "$*" | grep -q "hw.physicalcpu"; then
+              echo "2"
+          else
+              echo "8589934592"
+          fi
+          EOF
+          sudo chmod +x /usr/sbin/sysctl
+          sudo ln -sf /usr/sbin/sysctl /usr/bin/sysctl
+          sudo ln -sf /usr/sbin/sysctl /bin/sysctl
+
+          sudo rm -f /usr/bin/xcrun /bin/xcrun
+          sudo tee /usr/bin/xcrun > /dev/null << 'EOF'
+          #!/bin/sh
+          exit 0
+          EOF
+          sudo chmod +x /usr/bin/xcrun
+
+          sudo rm -f /usr/bin/sw_vers /bin/sw_vers
+          sudo tee /usr/bin/sw_vers > /dev/null << 'EOF'
+          #!/bin/sh
+          echo "ProductVersion: 13.0"
+          EOF
+          sudo chmod +x /usr/bin/sw_vers
+
       - name: Start Kernel Compilation
         run: |
           cd xnu
