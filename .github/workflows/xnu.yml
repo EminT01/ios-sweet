@@ -77,3 +77,4 @@ jobs:
 
           # Derlemeyi TULIP yerine standart arm64 hedefiyle başlatıyoruz
           make SDKROOT=iphoneos ARCH=arm64 KERNEL_CONFIGS="DEVELOPMENT" MACHINE_CONFIGS="tulip" RC_CFLAGS="-arch arm64" SKIP_HOST_VERSION_CHECK=1
+ 
